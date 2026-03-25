@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wagent"
+version = "0.1.0"
+description = "AI Interview Agent System with Harness-Centric Architecture"
+requires-python = ">=3.10"
+dependencies = [
+    "langchain>=0.3",
+    "langgraph>=0.2",
+    "langchain-openai>=0.2",
+    "qdrant-client>=1.12",
+    "rank-bm25>=0.2",
+    "sentence-transformers>=3.0",
+    "numpy>=1.24",
+    "pydantic>=2.0",
+    "pydantic-settings>=2.0",
+    "pdfplumber>=0.11",
+    "tenacity>=9.0",
+    "rich>=13.0",
+    "typer>=0.12",
+    "apscheduler>=3.10",
+    "python-dotenv>=1.0",
+    "prompt-toolkit>=3.0",
+    "rapidocr>=3.0",
+    "onnxruntime>=1.16",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-asyncio", "ruff"]
+browser = ["playwright>=1.40", "mcp>=1.0"]
+
+[project.scripts]
+wagent = "wagent.cli.main:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+markers = ["slow: tests that require model downloads or heavy computation"]

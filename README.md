@@ -70,46 +70,67 @@ playwright install chromium
 # 4.（可选）安装小红书工具的 Python 依赖
 pip install requests websockets
 # 或在 tools/xiaohongshu-skills/ 下执行 uv sync
-
-# 5. 配置环境变量
-cp .env.example .env
-# 编辑 .env，填入 LLM_API_KEY、LLM_BASE_URL、LLM_MODEL
 ```
 
-## 支持的 LLM 供应商
+## 配置
 
-WAgent 兼容所有 OpenAI 格式的 API，在 `.env` 中切换即可：
-
-| 供应商 | `LLM_BASE_URL` | `LLM_MODEL`（示例） |
-|--------|----------------|---------------------|
-| **DeepSeek** | `https://api.deepseek.com` | `deepseek-chat` |
-| **OpenAI** | `https://api.openai.com/v1` | `gpt-4o` |
-| **硅基流动** | `https://api.siliconflow.cn/v1` | `deepseek-ai/DeepSeek-V3` |
-| **NVIDIA** | `https://inference-api.nvidia.com/v1` | `gcp/google/gemini-3-pro` |
-| **Moonshot（Kimi）** | `https://api.moonshot.cn/v1` | `moonshot-v1-auto` |
-| **MiniMax** | `https://api.minimax.chat/v1` | `MiniMax-Text-01` |
-
-### 双模型分级（可选）
-
-可以配置一个廉价快速模型处理简单任务（意图分类、元数据生成、GAP 分析等），降低 Token 成本：
+### 第一步：配置 LLM API
 
 ```bash
-# .env 中新增以下配置（未配置则所有任务走主模型）
+cp .env.example .env
+```
+
+编辑 `.env`，配置两个模型层级：
+
+```bash
+# ── Strong tier（必填）：用于 QA 提取、面试对话、评审打分等复杂推理任务 ──
+LLM_API_KEY=your-api-key-here
+LLM_BASE_URL=https://api.deepseek.com        # 选择任一供应商
+LLM_MODEL=deepseek-chat                       # 对应的模型名称
+
+# ── Fast tier（推荐）：用于意图分类、元数据生成等简单任务，降低成本 ──
+# 未配置则所有任务走 Strong tier
 LLM_FAST_API_KEY=your-siliconflow-key
 LLM_FAST_BASE_URL=https://api.siliconflow.cn/v1
 LLM_FAST_MODEL=deepseek-ai/DeepSeek-V3
 ```
 
-## 环境变量说明
+**支持的 LLM 供应商**（Strong / Fast 均可选用）：
+
+| 供应商 | `LLM_BASE_URL` | `LLM_MODEL`（示例） | 说明 |
+|--------|----------------|---------------------|------|
+| **DeepSeek** | `https://api.deepseek.com` | `deepseek-chat` | 中文效果好，性价比高 |
+| **硅基流动** | `https://api.siliconflow.cn/v1` | `deepseek-ai/DeepSeek-V3` | 国内聚合平台，一个 key 用多种模型 |
+| **OpenAI** | `https://api.openai.com/v1` | `gpt-4o` | |
+| **NVIDIA** | `https://inference-api.nvidia.com/v1` | `gcp/google/gemini-3-pro` | 提供 thinking model |
+| **Moonshot（Kimi）** | `https://api.moonshot.cn/v1` | `moonshot-v1-auto` | |
+| **MiniMax** | `https://api.minimax.chat/v1` | `MiniMax-Text-01` | |
+
+所有供应商均使用 OpenAI 兼容格式，只需修改 `BASE_URL` 和 `MODEL` 即可切换。
+
+### 第二步：准备知识文档和简历
+
+```bash
+# 将面试八股文档（PDF/TXT）放入此目录
+data/documents/
+
+# 将你的简历放在项目根目录（用于面试模式）
+# 示例：WAgent/resume.pdf
+```
+
+- **知识文档**：支持 PDF 和 TXT 格式，放入 `data/documents/` 后运行 `wagent ingest` 即可入库
+- **简历**：放在项目根目录下，面试和准备命令中通过路径引用（如 `wagent interview resume.pdf`）
+
+### 环境变量完整说明
 
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
-| `LLM_API_KEY` | （必填） | LLM 供应商 API key |
-| `LLM_BASE_URL` | `https://api.deepseek.com` | OpenAI 兼容 API 地址 |
-| `LLM_MODEL` | `deepseek-chat` | 主模型名称 |
-| `LLM_FAST_API_KEY` | （可选） | 快速模型 API key |
-| `LLM_FAST_BASE_URL` | （可选） | 快速模型 API 地址 |
-| `LLM_FAST_MODEL` | （可选） | 快速模型名称 |
+| `LLM_API_KEY` | （必填） | Strong tier LLM API key |
+| `LLM_BASE_URL` | `https://api.deepseek.com` | Strong tier API 地址 |
+| `LLM_MODEL` | `deepseek-chat` | Strong tier 模型名称 |
+| `LLM_FAST_API_KEY` | （可选） | Fast tier LLM API key |
+| `LLM_FAST_BASE_URL` | （可选） | Fast tier API 地址 |
+| `LLM_FAST_MODEL` | （可选） | Fast tier 模型名称 |
 | `TOKEN_BUDGET` | `100000` | 单次面试 Token 预算 |
 | `QDRANT_PATH` | `./data/qdrant_db` | 本地 Qdrant 存储路径 |
 | `QDRANT_URL` | （可选） | Qdrant Server 地址（Docker 模式） |

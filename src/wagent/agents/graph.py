@@ -20,7 +20,7 @@ from typing import Any, TypedDict
 from langchain_core.messages import BaseMessage, SystemMessage
 from langgraph.graph import END, START, StateGraph
 
-from wagent.agents.interviewer import INTERVIEWER_SYSTEM_PROMPT
+from wagent.agents.interviewer import INTERVIEWER_SYSTEM_PROMPT, _build_resume_section
 from wagent.agents.judge import judge_interview
 from wagent.agents.router import route_resume
 from wagent.agents.schemas import InterviewPlan
@@ -78,14 +78,15 @@ async def interview_node(state: GraphState) -> dict:
     if plan:
         mode = interview_state.progress.current_mode
         covered = interview_state.progress.covered_topics
+        resume_section = _build_resume_section(interview_state.resume_text, mode)
         system_prompt = INTERVIEWER_SYSTEM_PROMPT.format(
-            resume_topics=plan.resume_topics,
             random_topics=plan.random_topics,
             mode=mode.value,
             current_topic=current_topic,
             covered=covered,
             q_count=interview_state.progress.questions_asked,
             total_questions=plan.total_questions,
+            resume_section=resume_section,
             knowledge_context=kb_section,
         )
         enriched: list[BaseMessage] = [SystemMessage(content=system_prompt)]

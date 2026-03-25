@@ -24,25 +24,43 @@ INTERVIEWER_SYSTEM_PROMPT = """\
 你精通大模型、推荐系统、NLP、Agent 架构等 AI 全栈技术，面试风格专业、深入但不刻板。
 
 ## 面试计划
-- 简历驱动方向: {resume_topics}
-- 随机八股方向: {random_topics}
 - 当前提问模式: {mode}
 - 当前聚焦方向: {current_topic}
 - 已覆盖方向: {covered}
 - 已提问数 / 总题量: {q_count} / {total_questions}
 
+{resume_section}
+
 ## 面试准则
-- 每次只问**一个**清晰、聚焦的技术问题
-- 简历驱动模式：紧扣候选人简历中描述的项目经历和技术栈进行追问
-- 随机八股模式：从 AI/大模型领域的高频面试考点中选题
-- 语气保持专业友好，鼓励候选人展开回答
+
+每次只问**一个**清晰、聚焦的技术问题。语气保持专业友好，鼓励候选人展开回答。
+
+### 简历驱动模式（resume_driven）
+你的目标是**深挖候选人的真实项目经历**，而非考察通用八股知识。
+请仔细阅读上方的候选人简历，围绕简历中描述的具体项目、技术和成果进行提问。
+
+提问策略（按优先级）：
+1. **项目细节追问**："你简历中提到了 XXX，具体是怎么实现的？用了什么技术栈？"
+2. **技术选型追问**："为什么选择 A 而不是 B？有没有做过对比实验？"
+3. **困难与解决**："这个项目中遇到的最大技术挑战是什么？怎么解决的？"
+4. **量化与效果**："效果提升了多少？是怎么衡量和评估的？"
+5. **深层原理**：从候选人的回答中抓住关键技术点，追问底层原理和设计思路
+
+**禁止**：不要问与简历无关的通用八股题（如"请介绍一下 Transformer 的注意力机制"），
+这类基础知识考察留给随机八股模式。简历模式中每个问题都必须能在候选人简历中找到出处。
+
+### 随机八股模式（random_bagu）
+从 AI/大模型领域的高频面试考点中选题，考察候选人的基础知识广度和深度。
+不需要关联简历内容，直接考察技术原理、概念理解和工程实践。
+随机八股方向: {random_topics}
 
 ## 自适应追问策略
 根据候选人上一轮回答质量和当前追问深度，采取不同策略：
 
 1. **回答优秀（≥7分）且追问深度未满**：
    - 在当前方向上继续深入追问，挖掘实战细节、底层原理、边界条件
-   - 例如从 "你用了什么方法" 追问到 "为什么选择这个方法" 再到 "遇到了什么坑、怎么解决的"
+   - 简历模式：从候选人回答中抓住具体技术点继续深挖，如"你刚才提到用了 XXX，能展开说说具体的实现细节吗？"
+   - 八股模式：从基础概念追问到高级应用
 
 2. **回答一般（4-6分）**：
    - 在同一方向上换一道新题，给候选人展示的机会
@@ -50,7 +68,6 @@ INTERVIEWER_SYSTEM_PROMPT = """\
 
 3. **回答较差（<4分）或候选人表示不了解**：
    - 给出简要的知识点提示（1-2句话概括核心要点），然后切换到下一个方向
-   - 知识点提示格式：「💡 简要提示：...」
 
 4. **追问深度已满（连续追问达上限）**：
    - 对当前方向做简要总结，自然过渡到下一个方向
@@ -90,6 +107,15 @@ EVAL_PROMPT = """\
 """
 
 
+def _build_resume_section(resume_text: str, mode: QuestionMode) -> str:
+    """Build the resume section for the interviewer prompt based on current mode."""
+    if not resume_text:
+        return "## 候选人简历\n（未提供简历）"
+    if mode == QuestionMode.RESUME_DRIVEN:
+        return f"## 候选人简历（完整，请仔细阅读并据此提问）\n{resume_text[:3000]}"
+    return f"## 候选人简历（摘要，仅供参考）\n{resume_text[:500]}"
+
+
 async def generate_question(
     state: InterviewState,
     plan: InterviewPlan,
@@ -109,14 +135,16 @@ async def generate_question(
     if knowledge_context:
         kb_section = f"相关知识库参考资料:\n{knowledge_context}\n\n请参考以上内容来设计你的提问。"
 
+    resume_section = _build_resume_section(state.resume_text, mode)
+
     system = INTERVIEWER_SYSTEM_PROMPT.format(
-        resume_topics=plan.resume_topics,
         random_topics=plan.random_topics,
         mode=mode.value,
         current_topic=pending[0] if mode == QuestionMode.RESUME_DRIVEN and (pending := [t for t in plan.resume_topics if t not in covered]) else "随机八股",
         covered=covered,
         q_count=state.progress.questions_asked,
         total_questions=plan.total_questions,
+        resume_section=resume_section,
         knowledge_context=kb_section,
     )
 
@@ -187,14 +215,15 @@ async def interviewer_turn(
     if plan:
         mode = state.progress.current_mode
         covered = state.progress.covered_topics
+        resume_section = _build_resume_section(state.resume_text, mode)
         plan_injection = INTERVIEWER_SYSTEM_PROMPT.format(
-            resume_topics=plan.resume_topics,
             random_topics=plan.random_topics,
             mode=mode.value,
             current_topic=current_topic,
             covered=covered,
             q_count=state.progress.questions_asked,
             total_questions=plan.total_questions,
+            resume_section=resume_section,
             knowledge_context=kb_section,
         )
         messages = [SystemMessage(content=plan_injection)] + [

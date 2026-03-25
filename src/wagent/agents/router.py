@@ -59,8 +59,8 @@ PLAN_PROMPT = """\
 ## 规则
 - resume_topics：从 free_topics 和 mapped_topics 中选取与候选人背景匹配的方向（面试模式 A：简历驱动）
 - random_topics：从 taxonomy 中选取候选人简历未涉及的方向（面试模式 B：随机八股）
-- resume_question_count：约占总题量的 70%，每个 resume topic 至少 1 题
-- random_question_count：约占总题量的 30%。若简历涉及方向少（<4个），增加随机题量；若多（>6个），减少随机题量
+- resume_question_count：约占总题量的 80%，每个 resume topic 至少 1 题，侧重项目深挖
+- random_question_count：约占总题量的 20%。若简历涉及方向少（<4个），适当增加随机题量
 - total_questions：15-20 题
 
 ## 输出格式（严格 JSON）
@@ -129,8 +129,8 @@ async def generate_plan(extraction: SkillExtraction) -> InterviewPlan:
         return InterviewPlan(
             resume_topics=resume_topics,
             random_topics=random_topics,
-            resume_question_count=max(10, len(resume_topics) * 2),
-            random_question_count=max(3, 5 - len(resume_topics) // 2),
+            resume_question_count=max(12, len(resume_topics) * 2),
+            random_question_count=max(2, 4 - len(resume_topics) // 3),
         )
 
 
